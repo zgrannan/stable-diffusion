@@ -40,7 +40,7 @@ def load_model_from_config(config, ckpt, verbose=False):
         print("unexpected keys:")
         print(u)
 
-    model.cuda()
+    model.to("mps")
     model.eval()
     return model
 
@@ -49,7 +49,7 @@ def load_img(path):
     image = Image.open(path).convert("RGB")
     w, h = image.size
     print(f"loaded input image of size ({w}, {h}) from {path}")
-    w, h = map(lambda x: x - x % 32, (w, h))  # resize to integer multiple of 32
+    w, h = map(lambda x: x - x % 64, (w, h))  # resize to integer multiple of 32
     image = image.resize((w, h), resample=PIL.Image.LANCZOS)
     image = np.array(image).astype(np.float32) / 255.0
     image = image[None].transpose(0, 3, 1, 2)
@@ -199,7 +199,7 @@ def main():
     config = OmegaConf.load(f"{opt.config}")
     model = load_model_from_config(config, f"{opt.ckpt}")
 
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("mps")
     model = model.to(device)
 
     if opt.plms:
@@ -242,7 +242,7 @@ def main():
 
     precision_scope = autocast if opt.precision == "autocast" else nullcontext
     with torch.no_grad():
-        with precision_scope("cuda"):
+        with precision_scope("cpu"):
             with model.ema_scope():
                 tic = time.time()
                 all_samples = list()
